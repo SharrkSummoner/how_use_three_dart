@@ -1,15 +1,19 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:html';
 
 import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_cube/flutter_cube.dart';
 import 'package:flutter_gl/flutter_gl.dart';
 import 'package:http/http.dart' as http;
 import 'package:osjaddfnjosdfgn/filelist.dart';
 import 'package:three_dart/three3d/math/math.dart';
 import 'package:three_dart/three_dart.dart' as three;
 import 'package:three_dart_jsm/three_dart_jsm.dart' as three_jsm;
+
 
 void main() {
   runApp(const MyApp());
@@ -26,7 +30,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      home: ThreeRender(),
+      home: ThreeRender()
     );
   }
 }
@@ -119,14 +123,12 @@ class _ThreeRender extends State<ThreeRender> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("render"),
+        title: Text("TEST WEBGL"),
       ),
       body: Builder(
         builder: (BuildContext context) {
           initSize(context);
-          return Container(
-            child: _build(context),
-          );
+          return SingleChildScrollView(child: _build(context));
         },
       ),
       floatingActionButton: FloatingActionButton(
@@ -153,8 +155,7 @@ class _ThreeRender extends State<ThreeRender> {
                       child: Builder(builder: (BuildContext context) {
                         if (kIsWeb) {
                           return three3dRender.isInitialized
-                              ? HtmlElementView(
-                                  viewType: three3dRender.textureId!.toString())
+                              ? HtmlElementView(viewType: three3dRender.textureId!.toString())
                               : Container();
                         } else {
                           return three3dRender.isInitialized
@@ -168,6 +169,8 @@ class _ThreeRender extends State<ThreeRender> {
       ],
     );
   }
+
+
 
   render() {
     int t = DateTime.now().millisecondsSinceEpoch;
@@ -229,7 +232,11 @@ class _ThreeRender extends State<ThreeRender> {
     initPage();
   }
 
-  initPage() {
+  formatValue(String input){
+    return Math.round(double.parse(input) / 10) / 100;
+  }
+
+  initPage() async {
     scene = three.Scene();
     camera = three.PerspectiveCamera(40, width / height, 1, 100000);
     camera.position.set(0, 0, 1000);
@@ -251,28 +258,121 @@ class _ThreeRender extends State<ThreeRender> {
 
     // var material = three.MeshBasicMaterial(three.Color{0x00ff00});
     var loader = three_jsm.OBJLoader(null);
-    // object = await loader.loadAsync('assets/pipe.obj');
 
-    var group = three.Group();
+    bool first = true;
 
-    fetchFiles().then((value) => {
+    fetchFiles().then((archive) => {
       setState(() {
-        value.forEach((element) {
-          objectFiles.add(element);
-          print(objectFiles);
+        var group = three.Group();
+        var archiveFiles = 0;
+        archive.files.forEach((file) {
+          var decode = utf8.decode(file.content);
+          List<String> split;
+          List<String> formated = List.empty(growable: true);
+          decode.split('\n').forEach((line) => {
+            split = line.split(' '),
+            if (split.isNotEmpty && split.elementAt(0) == 'v'){
+              formated.add(line)
+              //formated.add(List.from(['v', formatValue(split.elementAt(1)), formatValue(split.elementAt(2)), formatValue(split.elementAt(3))]).join(' '))
+            }
+            else if (split.isNotEmpty && split.elementAt(0) == 'f'){
+              formated.add(List.from(['f', split.elementAt(1).replaceAll("/", "//"), split.elementAt(2).replaceAll("/", "//"), split.elementAt(3).replaceAll("/", "//")]).join(' ')),
+            }
+            else if (line.trim() == ""){
+
+            }
+            else{
+              formated.add(line)
+            }
+          });
+
+
+          (loader.parse(formated.join('\n')) as Future<dynamic>).then((model) => {
+            group.add(model),
+            if (++archiveFiles == archive.files.length){
+              scene.add(group),
+              setView(group),
+              animate()
+            }
+          });
+
+          // if (first){
+          //   var formated = List.empty(growable: true);
+          //   List<String> split;
+          //   decode.split('\n').forEach((line) => {
+          //     split = line.split(' '),
+          //     if (split.isNotEmpty && split.elementAt(0) == 'v'){
+          //       formated.add(line)
+          //       //formated.add(List.from(['v', formatValue(split.elementAt(1)), formatValue(split.elementAt(2)), formatValue(split.elementAt(3))]).join(' '))
+          //     }
+          //     else if (split.isNotEmpty && split.elementAt(0) == 'f'){
+          //       formated.add(List.from(['f', split.elementAt(1).replaceAll("/", "//"), split.elementAt(2).replaceAll("/", "//"), split.elementAt(3).replaceAll("/", "//")]).join(' ')),
+          //     }
+          //     else if (line.trim() == ""){
+          //
+          //     }
+          //     else{
+          //       formated.add(line)
+          //     }
+          //   });
+          //
+          //   (loader.parse(formated.join('\n')) as Future<dynamic>).then((model) => {
+          //     scene.add(model),
+          //     setView(model),
+          //     animate()
+          //   });
+          //   first = false;
+          // }
+
+
+
+
+          //loader.load('assets/pipe.obj', (model) => {
+          // loader.load('assets/pipe.obj', (model) => {
+          //   scene.add(model),
+          //   setView(model),
+          //   animate()
+          // });
+
+          // rootBundle.loadString('assets/pipe.obj').then((text) => {
+          //   setState(() => {
+          //     loader.parse(text)
+          //   })
+          // });
+
+
+
+
+
+          // (loader.parse(decode) as Future<dynamic>).then((model3d) => {
+          //   print(model3d);
+          //   setState((){
+          //     print("loaded");
+          //     var qwe = model3d;
+          //     var qw1 = 0;
+          //   })
+          // });
+
+
+          // var object = loader.parse(decode) as three.Object3D;
+          // group.add(object);
         });
+        // scene.add(group);
+        // setView(group);
+        // animate();
+        // scene.add(group);
+        // setView(group);
+        //
+        // animate();
       })
     });
 
-    objectFiles.forEach((element) {
-      print(element);
-      group.add(loader.parse(element));
-    });
+    // objectFiles.forEach((element) {
+    //   print(element);
+    //   group.add(loader.parse(element));
+    // });
     // group.add(object);
-    scene.add(group);
-    setView(group);
 
-    animate();
   }
 
   animate() {

@@ -35,9 +35,10 @@ dependencies:
   flutter_gl: ^0.0.21
   three_dart_jsm: ^0.0.9
   webview_flutter: ^3.0.4
-  path_provider: ^2.0.11
   flutter_3d_obj: ^0.0.6
   flutter_archive: ^5.0.0
+  flutter_cube: ^0.1.1
+
 
 
   # The following adds the Cupertino Icons font to your application.
